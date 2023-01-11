@@ -1977,6 +1977,11 @@ ul {
 	text-decoration: none !important;
 }
 
+.imageDetailViewFields {
+	border-bottom: 1px solid #dedede;
+    border-right: 1px solid #dedede;
+}
+
 .inactive{
 	color:#999999;
 }
@@ -3031,9 +3036,4 @@ a.allMnu:Hover{
 /* Currency modal LDS width override */
 .custom-width-350 {
 	width: 350px !important;
-}
-
-.imageDetailViewFields {
-	border-bottom: 1px solid #dedede;
-	border-right: 1px solid #dedede;
 }
