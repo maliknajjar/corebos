@@ -403,6 +403,23 @@ class cbCVManagement extends CRMEntity {
 				$allViews[] = $value['cvid'];
 			}
 		}
+
+		// filter private records views
+		$cvsql = 'SELECT vtiger_cbcvmanagement.cvid, vtiger_customview.userid 
+			FROM `vtiger_cbcvmanagement` 
+			INNER JOIN vtiger_customview 
+			ON vtiger_cbcvmanagement.cvid = vtiger_customview.cvid 
+			WHERE setprivate = 1';
+		$queryResult = $adb->query($cvsql);
+		while ($row=$adb->fetch_array($queryResult)) {
+			for ($i=0; $i < count($allViews); $i++) {
+				if ($allViews[$i] == $row['cvid'] && $row['userid'] !== $cvuserid) {
+					unset($allViews[$i]);
+					$allViews = array_values($allViews);
+				}
+			}
+		}
+
 		VTCacheUtils::updateCachedInformation($key, $value);
 		return array_unique($allViews);
 	}
@@ -478,6 +495,18 @@ class cbCVManagement extends CRMEntity {
 		if (empty($cvuserid)) {
 			return false;
 		}
+
+		// checks if the record is Private
+		$cvsql = 'SELECT vtiger_cbcvmanagement.cvid, vtiger_customview.userid 
+			FROM `vtiger_cbcvmanagement` 
+			INNER JOIN vtiger_customview 
+			ON vtiger_cbcvmanagement.cvid = vtiger_customview.cvid 
+			WHERE setprivate = 1 AND vtiger_cbcvmanagement.cvid = ? AND vtiger_customview.userid != ?';
+		$queryResult = $adb->pquery($cvsql, array($cvid, $cvuserid));
+		if ($adb->num_rows($queryResult)) {
+			return array('C' => 0, 'R' => 0, 'U' => 0, 'D' => 0, 'A' => 0);
+		}
+
 		$module = $adb->query_result($cvrs, 0, 'entitytype');
 		$cvname = $adb->query_result($cvrs, 0, 'viewname');
 		$cvuid = $adb->query_result($cvrs, 0, 'userid');
@@ -543,6 +572,10 @@ class cbCVManagement extends CRMEntity {
 		$cvsql = $adb->convert2Sql($cvsql, array(0, $cvuserid, $cvid));
 		$value = self::returnPermission($cvsql, $key);
 		if ($value) {
+			global $log;
+			$log->fatal('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX');
+			$log->fatal($value);
+			// this value is empty try to know why it is empty man
 			return $value;
 		}
 		self::$validationinfo[] = '---';
@@ -604,6 +637,26 @@ class cbCVManagement extends CRMEntity {
 
 	public static function getValidationInfo() {
 		return self::$validationinfo;
+	}
+
+	public static function getSetPrivateByCvId($cvid) {
+		global $adb;
+		$result = $adb->pquery("SELECT setprivate FROM `vtiger_cbcvmanagement` WHERE cvid = ?", array($cvid));
+		if (!$result) {
+			return false;
+		}
+		return $result->fields['setprivate'];
+	}
+
+	public static function getFilterViewPermission($record_id) {
+		global $adb;
+		$rs = $adb->pquery('select * from vtiger_cbcvmanagement inner join vtiger_crmentity on crmid=cbcvmanagementid where deleted=0 and cvid=?', array(
+			$record_id
+		));
+		if ($adb->num_rows($rs) == 1) {
+			return array_filter($rs->FetchRow(), 'is_string', ARRAY_FILTER_USE_KEY);
+		}
+		return false;
 	}
 }
 ?>
